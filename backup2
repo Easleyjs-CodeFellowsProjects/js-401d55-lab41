@@ -1,0 +1,127 @@
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Gyroscope, Magnetometer } from 'expo-sensors';
+import getHeading from './lib/initial_bearing';
+
+export default function Compass() {
+  // Magnetometer state/variables
+  const [{ mX, mY, mZ }, setMagData] = useState({
+    mX: 0,
+    mY: 0,
+    mZ: 0,
+  });
+  const [magSubscription, setMagSubscription] = useState(null);
+
+  // move these down once ready to integrate gyro intervals too
+  const _slow = () => { 
+                        Magnetometer.setUpdateInterval(1000);
+                        Gyroscope.setUpdateInterval(1000);
+                      };
+  const _fast = () => { 
+                        Magnetometer.setUpdateInterval(200);
+                        Gyroscope.setUpdateInterval(200);
+                      };
+
+  // Magnetometer setup and functions
+  const _subscribeMagneto = () => {
+    setMagSubscription(
+      Magnetometer.addListener(result => {
+        const { x, y, z } = result;
+
+        setMagData({mX: x, mY: y, mZ: z });
+      })
+    );
+  };
+
+  const _unsubscribeMagneto = () => {
+    magSubscription && magSubscription.remove();
+    setMagSubscription(null);
+  };
+
+  useEffect(() => {
+    _subscribeMagneto();
+    return () => _unsubscribeMagneto();
+  }, []);
+
+  // Gyroscope state/variables
+  const [{ gX, gY, gZ }, setGyroData] = useState({
+    gX: 0,
+    gY: 0,
+    gZ: 0,
+  });
+  const [gyroSubscription, setGyroSubscription] = useState(null);
+
+  // Gyro functions / setup
+  const _subscribeGyro = () => {
+    setGyroSubscription(
+      Gyroscope.addListener(gyroscopeData => {
+        const { x, y, z } = gyroscopeData;
+
+        setGyroData({gX: x, gY: y, gZ: z });
+      })
+    );
+  };
+
+  const _unsubscribeGyro = () => {
+    gyroSubscription && gyroSubscription.remove();
+    setGyroSubscription(null);
+  };
+
+  useEffect(() => {
+    _subscribeGyro();
+    return () => _unsubscribeGyro();
+  }, []);
+
+//calculateBearing(gZ, mX, mY)
+/*
+      <Text style={styles.text}>Magnetometer X: { mX }</Text>
+      <Text style={styles.text}>Gyroscope X: { gX }</Text>
+*/
+  return (
+    <View style={styles.container}>
+      <Text style={styles.text}>Heading: { getHeading(mX, mY, mZ) }</Text>
+
+
+      <View style={styles.buttonContainer}>
+        <TouchableOpacity onPress={ magSubscription ? _unsubscribeMagneto : _subscribeMagneto } style={styles.button}>
+          <Text>{magSubscription ? 'On' : 'Off'}</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={_slow} style={[styles.button, styles.middleButton]}>
+          <Text>Slow</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={_fast} style={styles.button}>
+          <Text>Fast</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 10,
+  },
+  text: {
+    textAlign: 'center',
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    alignItems: 'stretch',
+    marginTop: 15,
+  },
+  button: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#eee',
+    padding: 10,
+  },
+  middleButton: {
+    borderLeftWidth: 1,
+    borderRightWidth: 1,
+    borderColor: '#ccc',
+  },
+});
+
